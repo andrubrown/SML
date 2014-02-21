@@ -4,7 +4,7 @@
 #%: Written by: Kevin Lin
 #%: NOTE: You might have trouble running bigmemory on your (new) R version. If so, install R-2.15.3
 ##########
-setwd("C:/Users/UikosPC/Dropbox/GitHub/SML")
+setwd("C:/Users/UikosPC/GitHub/SML")
 library(bigmemory)
 library(biganalytics)
 library(biglm)
@@ -108,4 +108,51 @@ system.time(lm(col1 ~ col2 + col3 + col4 + col5, data=df.mat3))
 #%: try the load function
 rm(list=ls())
 load("idx_list.RData")
+
+##############################
+#%: we now try another "smart way" in reducing run times
+rm(list=ls())
+num.len = 100000
+tmp = rep(c(1:5),each=num.len)
+num.len2 = num.len*5
+tmp2 = cbind(tmp,tmp)
+tmpdf.mat = as.big.matrix(tmp2) 
+
+method1 <- function(){
+  vec.sum = rep(0,5)
+  tmpvec = tmpdf.mat[,1]
+  tmpidx = 1 #index in vec.sum
+  tmptot = 0 #sum of the numbers you're looking at
+  tmpcount = 0 #count of the numbers you're looking at
+  for(i in 1:num.len2){
+    if(tmpvec[i] == tmpidx){
+      tmptot = tmptot+tmpvec[i]
+      tmpcount = tmpcount+1
+    } else { 
+      vec.sum[tmpidx] = tmptot
+      tmpidx = tmpvec[i]
+      tmpcount = 1
+      tmptot = tmpvec[i]
+    }
+    if(i%%(num.len2/10)==0) cat('*')
+  }
+  vec.sum[tmpidx] = tmptot
+  return(vec.sum)
+}
+
+method2 <- function(){
+  vec.sum = rep(0,5) 
+  tmpvec = tmpdf.mat[,1]
+  tmpval = diff(tmpvec)
+  tmpidx = which(tmpval!=0)+1
+  tmpidx = c(1,tmpidx,num.len2+1)
+  for(i in 1:5){
+    vec.sum[i] = sum(tmpvec[tmpidx[i]:(tmpidx[i+1]-1)])
+  }
+  return(vec.sum)
+}
+
+system.time(method1())
+system.time(method2())
+
 
