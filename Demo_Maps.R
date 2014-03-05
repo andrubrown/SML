@@ -33,11 +33,9 @@ dev.off()
 
 ###########################################
 #extract the matrix of state county
-data(county.fips)
-data(state.fips)
-head(county.fips)
-tmp = county.fips[,2]
-num.county = length(tmp)
+county.names = map('county', namesonly=T, plot=F)
+state.names = map('state', namesonly=T, plot=F)
+num.county = length(county.names)
 
 #we briefly show a function "match.map" which 
 ## the following way is NOT good
@@ -47,12 +45,12 @@ randfunc <- function(stringvect){
 tmpname = apply(elect00,1,randfunc)
 tmpidx = match.map("county",tmpname)
 sum(is.na(tmpidx)) #we see that most of the indices shown here are NA, so something went wrong
-county.fips[is.na(tmpidx),]
+county.names[is.na(tmpidx)]
 
 ## debugging what went wrong above
 ## we're going to inspect the representation of "west viriginia"
-tmp1 = county.fips[2977,]
-tmp1 = as.character(unlist(tmp1[2]))
+tmp1 = county.names[2977]
+tmp1 = as.character(unlist(tmp1))
 tmp1 = unlist(strsplit(as.character(tmp1),split=","))[1]
 tmp1 = tolower(tmp1)
 tmp1 = unlist(strsplit(tmp1,split=""))
@@ -61,7 +59,7 @@ tmp2 = tolower(tmp2)
 tmp2 = unlist(strsplit(tmp2,split=""))
 tmp1 == tmp2
 
-## the following way IS good
+## the following way IS good (only for windows it seems though. not good for macs)
 randfunc2 <- function(stringvect){
   tmp = paste(stringvect[2],stringvect[3],sep=",")
   return(iconv(tmp, to='ASCII//TRANSLIT'))
@@ -69,10 +67,40 @@ randfunc2 <- function(stringvect){
 tmpname = apply(elect00,1,randfunc2)
 tmpidx = match.map("county",tmpname)
 sum(is.na(tmpidx))
-county.fips[is.na(tmpidx),]
+county.names[is.na(tmpidx)]
 
 
 tmpidx2 = match.map("state",iconv(as.character(unique(elect00[,2])), to='ASCII//TRANSLIT'))
+sum(is.na(tmpidx2)) #see that all the states got matched
+
+
+#######
+#the following versions work for both windows and macs
+randfunc2 <- function(stringvect){
+  tmp = paste(stringvect[2],stringvect[3],sep=",")
+  tmp2 = charToRaw(tmp)
+  tmpidx = which(tmp2=="a0")
+  if(length(tmpidx)>0){
+    tmp2[tmpidx] = charToRaw(" ")
+  }
+  tmp = rawToChar(tmp2)
+  return(tmp)
+}
+tmpname = apply(elect00,1,randfunc2)
+tmpidx = match.map("county",tmpname)
+sum(is.na(tmpidx))
+
+
+randfunc3 <- function(stringvect){
+  tmp2 = charToRaw(stringvect)
+  tmpidx = which(tmp2=="a0")
+  if(length(tmpidx)>0){
+    tmp2[tmpidx] = charToRaw(" ")
+  }
+  tmp = rawToChar(tmp2)
+  return(tmp)
+}
+tmpidx2 = match.map("state",unlist(lapply(as.character(elect00[,2]),randfunc3)))
 sum(is.na(tmpidx2)) #see that all the states got matched
 
 ############################################
@@ -82,20 +110,22 @@ sum(is.na(tmpidx2)) #see that all the states got matched
 parsing <-function(levelname){
   return(unlist(strsplit(as.character(levelname),',')))
 }
-tmp = county.fips[,2]
-mat.stateCounty = matrix(unlist(lapply(tmp,parsing)),nrow=length(tmp),ncol=2,byrow=TRUE)
+mat.stateCounty = matrix(unlist(lapply(county.names,parsing)),nrow=length(county.names),ncol=2,byrow=TRUE)
 mat.stateCounty = data.frame(mat.stateCounty)
 colnames(mat.stateCounty) = c("State","County")
 
 #%: do a simple check see if the county names are all unique. we will see they are not
 num.county == length(unique(mat.stateCounty[,2]))
 
-
-
 #%: preprocess all the strings to set them to lowercase letters and with spaces and periods removed
 formatstring <-function(stringname){
   tmp = as.character(stringname)
-  tmp = iconv(tmp, to='ASCII//TRANSLIT')
+  tmp2 = charToRaw(tmp)
+  tmpidx = which(tmp2=="a0")
+  if(length(tmpidx)>0){
+    tmp2[tmpidx] = charToRaw(" ")
+  }
+  tmp = rawToChar(tmp2)
   tmp = gsub("[[:punct:]]","",tmp)
   tmp = tolower(tmp)
   tmp = gsub(" ","",tmp)
@@ -130,10 +160,10 @@ for(i in 1:num.county){
   }
 }
 
-mat.translateName = c("boulder","dade","okaloosa","okaloosa","ebatonrouge","stmartin","stmartin",
+mat.translateName = c("dade","okaloosa","okaloosa","ebatonrouge","stmartin","stmartin",
                       "lewisclark","yellowstone","currituck","currituck","currituck",
                       "galveston","galveston","accomack","accomack",
-                      "pierce","pierce","sanjuan","sanjuan","sanjuan")
+                      "pierce","pierce","sanjuan","sanjuan","sanjuan","boulder")
 
 tmpvec = rep(NA,num.county)
 for(i in 1:num.county){
